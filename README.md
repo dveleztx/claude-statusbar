@@ -2,8 +2,6 @@
 
 A shell script that plugs into Claude Code's **status line hook** to display a rich, color-coded status bar showing model, context usage, working directory, git branch, and session duration.
 
-![example status bar](https://github.com/user-attachments/assets/placeholder)
-
 ```
  Claude Sonnet 4.6 | [████████████░░░░░░░░] 62% |  ~/projects/myapp |  main+! ⇡2 | 14m 32s
 ```
