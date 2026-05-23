@@ -13,11 +13,18 @@ ORANGE=$'\033[38;5;208m'
 RED=$'\033[1;31m'
 BLUE=$'\033[1;34m'
 DIM=$'\033[2m'
+BLACK=$'\033[0;30m'
 RESET=$'\033[0m'
+SEP="${DIM} | ${RESET}"
 
 # Read JSON payload from Claude Code
 INPUT=$(cat)
 jqr() { echo "$INPUT" | jq -r "${1} // empty" 2>/dev/null; }
+
+# ── Theme (for session time color) ───────────────────────────────────────────
+THEME=$(jq -r '.theme // "dark"' ~/.claude/settings.json 2>/dev/null)
+SESSION_COLOR="${DIM}"
+[ "$THEME" = "light" ] && SESSION_COLOR="${BLACK}"
 
 # ── Model ────────────────────────────────────────────────────────────────────
 MODEL=$(echo "$INPUT" | jq -r '.model.display_name // .model.id // "unknown"' 2>/dev/null)
@@ -87,7 +94,7 @@ if git -C "$REAL_CWD" rev-parse --git-dir &>/dev/null; then
         [ "$AHEAD"  -gt 0 ] && REMOTE_SYNC+=" ⇡${AHEAD}"
     fi
 
-    GIT_INFO=" ${GREEN} ${BRANCH}${GIT_DIRTY}${REMOTE_SYNC}${RESET}"
+    GIT_INFO="${GREEN} ${BRANCH}${GIT_DIRTY}${REMOTE_SYNC}${RESET}"
 fi
 
 # ── Session length ────────────────────────────────────────────────────────────
@@ -99,16 +106,22 @@ if [ -n "$SESSION_ID" ]; then
     START=$(cat "$SESSION_FILE")
     NOW=$(date +%s)
     ELAPSED=$(( NOW - START ))
-    H=$(( ELAPSED / 3600 ))
+    D=$(( ELAPSED / 86400 ))
+    H=$(( (ELAPSED % 86400) / 3600 ))
     M=$(( (ELAPSED % 3600) / 60 ))
-    [ "$H" -gt 0 ] && SESSION_PART="${H}h${M}m" || SESSION_PART="${M}m"
+    S=$(( ELAPSED % 60 ))
+    if   [ "$D" -gt 0 ]; then SESSION_PART="${D}d ${H}h"
+    elif [ "$H" -gt 0 ]; then SESSION_PART="${H}h ${M}m"
+    elif [ "$M" -gt 0 ]; then SESSION_PART="${M}m ${S}s"
+    else                       SESSION_PART="${S}s"
+    fi
 fi
 
 # ── Assemble output ───────────────────────────────────────────────────────────
 OUT="${PURPLE} ${MODEL}${RESET}"
-OUT+="  [${GAUGE_BAR}] ${GAUGE_COLOR}${CONTEXT_PCT}%${RESET}"
-OUT+="  ${BLUE} ${DISPLAY_CWD}${RESET}"
-OUT+="${GIT_INFO}"
-[ -n "$SESSION_PART" ] && OUT+="  ${DIM}⏱ ${SESSION_PART}${RESET}"
+OUT+="${SEP}[${GAUGE_BAR}] ${GAUGE_COLOR}${CONTEXT_PCT}%${RESET}"
+OUT+="${SEP}${BLUE} ${DISPLAY_CWD}${RESET}"
+[ -n "$GIT_INFO" ] && OUT+="${SEP}${GIT_INFO}"
+[ -n "$SESSION_PART" ] && OUT+="${SEP}${SESSION_COLOR}${SESSION_PART}${RESET}"
 
 printf "%s\n" "$OUT"
